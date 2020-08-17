@@ -21,28 +21,152 @@ library(sf)
 library(osmdata)
 library(ggmap)
 library(janitor)
+library(lubridate)
 ```
 
 ## Cargo las bases de datos y creo una sola tabla con las columnas de Saavedra. 
 
 ```{r}
-lh <- read_excel("C:/Users/Ale/Desktop/Calidad-endoscop-a-2019/Las Heras 2019.xlsx")
-saavedra <- read_excel("C:/Users/Ale/Desktop/Calidad-endoscop-a-2019/Saavedra 2019.xlsx")
+lh <- read_excel("C:/Users/Ale/Desktop/Calidad-endoscop-a-2019/lh_2019.xlsx")
+saavedra <- read_excel("C:/Users/Ale/Desktop/Calidad-endoscop-a-2019/saavedra.xlsx", guess_max = 20000)
 
 head(lh)
 head(saavedra)
-
+tail(saavedra)
 colnames(saavedra)
+colnames(lh)
 
-estudios_total <- bind_rows(saavedra, lh) %>%
-        select(c("Edad", "Terapeutica", "Operador", "Conclusiones1", "Conclusiones2", "Conclusiones3", "TipEs", "FecEstudio", "Sexo", "BostonI", "BostonD", "BostonT", "BostonTotal", "Direccion")) %>%
+```
+
+
+## filtro observaciones 2019 de saavedra
+## Uno ambos df y filtro las columnas que me interesan
+
+```{r}
+
+saavedra2019 <- saavedra %>% 
+        filter(FecEstudio >= "2019-01-01" & FecEstudio < "2020-01-01")
+
+
+
+total <- bind_rows(saavedra2019, lh)
+
+colnames(total)
+
+total_sedes <- total %>%
+        select(c("Edad", "Terapeutica", "Operador",  "Indicacion" ,  "Cobertura",  "HistClinicaNro", "Drogas", "Anestesiologo",     "Terapeutica", "Biopsia",  "Esofago", "Estomago", "Duodeno", "Colonoscopia", "Conclusiones1", "Conclusiones2", "Conclusiones3", "TipEs", "FecEstudio", "Sexo", "BostonI", "BostonD", "BostonT", "BostonTotal", "Preparacion", "PreparadoCon", "Asistente", "Direccion", "Paciente", "FecNacimiento", "AfiliadoNro")) %>%
          mutate_at(vars(which(sapply(., is.character))), str_to_upper) 
 
-head(estudios_total)
-str(estudios_total)
+head(total_sedes)
+str(total_sedes)
 ```
-total <- total %>%
-        Select(
+
+
+## Anonimizo y selecciono los operadores que me interesan
+
+```{r}
+
+unique(total_sedes$Operador)
+
+
+A <- total_sedes$Operador %in% c("PERALTA", "ANGEL DANIEL PERALTA MN 92.347")
+B <- total_sedes$Operador %in% "PABLO OLIVERA SENDRA MN 129.392"
+C <- total_sedes$Operador %in% "RAFAEL MOORE MN 85.298"
+D <- total_sedes$Operador %in% "IGNACIO FANJUL MN 126.170"
+E <- total_sedes$Operador %in% c("LUIS SOIFER MN 44.599","SOIFER")
+J <- total_sedes$Operador %in% "ALEJANDRO REY MN 134.017"
+G <- total_sedes$Operador %in% c("JUAN LASA MN 119.929","JUAN LASA MN 119929")
+H <- total_sedes$Operador %in% "DIMA GUILLERMO MN84344"
+I <- total_sedes$Operador %in% c("DR. GUSTAVO CERNADAS MN 137.352","GUSTAVO CERNADAS MN 137.352","GUSTAVO CERNADAS M.N. 137.352")
+
+
+total_sedes$Operador[A] <- "A"
+total_sedes$Operador[B] <- "B"
+total_sedes$Operador[C] <- "C"
+total_sedes$Operador[D] <- "D"
+total_sedes$Operador[E] <- "E"
+total_sedes$Operador[G] <- "G"
+total_sedes$Operador[H] <- "H"
+total_sedes$Operador[I] <- "I"
+total_sedes$Operador[J] <- "J"
+
+total_sedes_operador <- total_sedes %>%
+        filter(Operador %in% c("A", "B", "C", "D", "E", "G", "H", "I", "J"))
+
+unique(total_sedes_operador$Operador)
+
+```
+
+## Limpio las terapéuticas
+
+```{r}
+
+## Itero con unique hasta limpiar todas las terapéuticas
+
+unique(total_sedes_terapeutica$Terapeutica)
+
+
+total_sedes_terapeutica <- total_sedes_operador %>%
+        mutate(Terapeutica = case_when(str_detect(Terapeutica, regex("POL(I|P)")) ~ "POLIPECTOMIA",
+                                       str_detect(Terapeutica, regex("MUCO")) ~ "MUCOSECTOMIA",
+                                       str_detect(Terapeutica, regex("ARG(O|Ó)N|APC")) ~ "COAGULACION CON ARGON PLASMA",
+                                       str_detect(Terapeutica, regex("GASTROST")) &! str_detect(Terapeutica, regex("RECAMBIO"))~ "GASTROSTOMIA ENDOSCOPICA", 
+                                       str_detect(Terapeutica, regex("ACALASIA")) ~ "DILATACION ACALASIA",
+                                       str_detect(Terapeutica, regex("DILATACI(O|Ó)N")) &! (str_detect(Terapeutica, regex("ANASTO")) | str_detect(Terapeutica, regex("CRICO")) | str_detect(Terapeutica, regex("ACALASIA"))) ~ "DILATACION ESOFAGICA",
+                                       str_detect(Terapeutica, regex("CRICO")) ~ "DILATACION CRICOFARINGEO",
+                                       str_detect(Terapeutica, regex("EXTRAÑO")) ~ "EXTRACCION DE CUERPO EXTRAÑO",
+                                       str_detect(Terapeutica, regex("HEMOSTASIA|SANGRAN|CLIP|BIPOLAR")) ~ "HEMOSTASIA DE LESION SANGRANTE",
+                                       str_detect(Terapeutica, regex("LIGADURA|BAND")) ~ "LIGADURA DE VÁRICES ESOFAGICAS",
+                                       str_detect(Terapeutica, regex("SONDA|SNG|(K)108")) ~ "COLOCACION DE SONDA NASOGASTRICA",
+                                       str_detect(Terapeutica, regex("ANASTOM|QX")) ~ "DILATACION DE ANASTOMOSIS",
+                                       str_detect(Terapeutica, regex("CAPSULA|ENDOC(A|Á)PSULA")) ~ "COLOCACION DE ENDOCAPSULA",
+                                       str_detect(Terapeutica, regex("EXCLEROSIS|ESCL(A|E)ROSIS")) ~ "ESCLEROSIS DE ANGIODISPLASIAS",
+                                       str_detect(Terapeutica, regex("BOTOX|BOTULIN")) ~  "APLICACION TOXINA BOTULINICA",
+                                       str_detect(Terapeutica, regex("RECAMBIO DE BOTON")) ~  "RECAMBIO DE GASTROSTOMIA",
+                                       str_detect(Terapeutica, regex("LESIONES")) & str_detect(Indicacion, regex("PROCTORRAGIA")) ~  "ESCLEROSIS DE ANGIODISPLASIAS",
+                                                                                     str_detect(Terapeutica, regex("LESIONES")) &! str_detect(Indicacion, regex("PROCTORRAGIA")) ~  "HEMOSTASIA DE LESION SANGRANTE",
+                                                                              TRUE ~ Terapeutica),           
+               Terapeutica = if_else(str_detect(Colonoscopia, regex("POLI")) & is.na(Terapeutica),"POLIPECTOMIA", Terapeutica))
+
+
+## "Urgencia diurna" no fue una terapeutica por lo que lo transformo en NA
+
+total_sedes_terapeutica$Terapeutica[total_sedes_terapeutica$Terapeutica == "URGENCIA DIURNA"] <- NA
+
+## Elimino el estudio "NO REALIZADO"
+
+total_sedes_terapeutica<- total_sedes_terapeutica[ !(total_sedes_terapeutica$Terapeutica %in% "NO REALIZADO"), ]
+
+## Emprolijo algunos términos
+
+total_sedes_terapeutica$Terapeutica[total_sedes_terapeutica$Terapeutica == "STENT ESOFAGICO -ACOMODACION"] <- "STENT ESOFAGICO (ACOMODACION)"
+
+total_sedes_terapeutica$Terapeutica[total_sedes_terapeutica$Terapeutica == "COLOCACION DE STENT ESOFAGICA"] <- "STENT ESOFAGICO (COLOCACION)"
+
+total_sedes_terapeutica$Terapeutica[total_sedes_terapeutica$Terapeutica == "RETIRO DE STENT ESOFAGICO"] <- "STENT ESOFAGICO (RETIRO)"
+
+
+
+
+para_leer <- total_sedes_terapeutica[which(total_sedes_terapeutica$Terapeutica == "TERMOCOAGULACIÓN BIPOLAR"), ]
+
+prueba <- total_sedes_terapeutica
+
+prueba <- prueba[-(para_leer), ]
+
+para_leer
+
+
+
+```
+
+
+
+
+
+
+
+
 
 ## Agrego geolocalización
 
@@ -56,53 +180,34 @@ total <- cbind(estudios_total, geo) %>%
 head(total)
 ```
 
-## Empiezo limpieza de tablas
-
-```{r}
-unique(total$Operador)
-unique(total$Terapeutica)
-
-```
+## Cosas que voy haciendo que resultan utiles
 
 ```{r}
 
-total_tidy <- total %>%
-                mutate(Operador = case_when (Operador == "PERALTA" | Operador == "Angel Daniel Peralta MN 92.347" ~ "AP", 
-                                     Operador == "Juan Lasa MN 119929" | Operador == "Juan Lasa MN 119.929" ~ "JL",
-                                     Operador ==  "Dr. Gustavo Cernadas MN 137.352" | Operador == "Gustavo Cernadas M.N. 137.352" ~ "GC",
-                                     Operador == "Rafael Moore MN 85.298" ~ "RM", 
-                                     Operador == "Alejandro Rey MN 134.017" ~ "AR",
-                                     Operador == "Ignacio Fanjul MN 126.170" ~ "NF",
-                                     Operador == "Pablo Olivera Sendra MN 129.392" ~ "PO",
-                                     Operador == "Dima Guillermo MN84344" ~ "GD",
-                                     TRUE ~ Operador),
-                        Terapeutica = case_when(str_detect(Terapeutica, regex("p(o|e)l(i|p)", ignore_case = TRUE)) ~ "POLIPECTOMÍA",
-                                       str_detect(Terapeutica, regex("muco", ignore_case = TRUE)) ~ "MUCOSECTOMÍA",
-                                       str_detect(Terapeutica, regex("arg(o|ó|ò)n|apc", ignore_case = TRUE)) ~ "COAGULACIÓN CON PLASMA ARGÓN",
-                                       str_detect(Terapeutica, regex("band|ligadura", ignore_case = TRUE)) ~ "LIGADURA DE VÁRICES ESOFÁGICAS",
-                                       str_detect(Terapeutica, regex("sangr|hemost|lesiones|clips|urgencia", ignore_case = TRUE)) ~ "HEMOSTASIA LESIÓN SANGRANTE",
-                                       str_detect(Terapeutica, regex("extrañ", ignore_case = TRUE)) ~ "EXTRACCION CUERPO EXTRAÑO",
-                                       str_detect(Terapeutica, regex("gastrost", ignore_case = TRUE)) &! str_detect(Terapeutica, regex("RECAMBIO", ignore_case = T))~ "GASTROSTOMIA ENDOSCÓPICA",
-                                       str_detect(Terapeutica, regex("dil(at|ta)", ignore_case = TRUE)) &! str_detect(Terapeutica, regex("colon", ignore_case = T)) ~ "DILATACIÓN ESOFÁGICA",
-                                       str_detect(Terapeutica, regex("stent", ignore_case = TRUE)) &! str_detect(Terapeutica, regex("colon", ignore_case = T)) ~ "COLOCACIÓN DE STENT ESOFÁGICO",
-                                       str_detect(Terapeutica, regex("dila", ignore_case = TRUE)) &! str_detect(Terapeutica, regex("esof", ignore_case = T)) ~ "DILATACIÓN COLÓNICA",
-                                       str_detect(Terapeutica, regex("108|SNG|sonda", ignore_case = TRUE)) ~ "COLOCACIÓN DE SONDA NASOGÁSTRICA",
-                                       str_detect(Terapeutica, regex("RECAMBIO", ignore_case = TRUE)) ~ "RECAMBIO DE BOTON GÁSTRICO",
-                                       str_detect(Terapeutica, regex("e(s|x)cl(e|a)ro", ignore_case = TRUE)) ~ "ESCLEROTERAPIA DE ANGIODISPLASIA",
-                                       str_detect(Terapeutica, regex("bipo", ignore_case = TRUE)) ~ "TERMOCOAGULACIÓN BIPOLAR",
-                                       str_detect(Terapeutica, regex("botox|toxina", ignore_case = TRUE)) ~ "APLICACIÓN DE TOXINA BOTULÍNICA",
-                                       str_detect(Terapeutica, regex("c(a|á)psula", ignore_case = TRUE)) ~ "COLOCACIÓN DE ENDOCÁPSULA",
-                                       
-                                       TRUE ~ Terapeutica),
-                       TipEs = if_else(TipEs == "O", "G", TipEs)) %>%
-        subset(Terapeutica != "NO REALIZADO" | is.na(Terapeutica))
- 
+## seleccionar una fila según una observacion
+
+nombres <- bind_rows(saavedra2019, lh) 
+
+unique(nombres$TipEs)
+
+o <- nombres$TipEs == "O"
+
+nombres [o,]
 
 
-unique(total_tidy$Terapeutica)
+## crear un archivo par apedir las AP
 
-limpieza <- total_tidy %>% filter (Terapeutica == "RECAMBIO DE BOTON GÁSTRICO")
-limpieza
+nombres <- total_sedes_terapeutica %>% 
+        filter (TipEs == "C" & (Terapeutica == "POLIPECTOMIA"| Terapeutica == "MUCOSECTOMIA")) %>% 
+        select( "FecEstudio", "Paciente", "FecNacimiento","HistClinicaNro", "Cobertura", "AfiliadoNro")
 
+dif <-anti_join(total_sedes_terapeutica,nombres)
+
+write.csv(nombres, "C:/Users/Ale/Desktop/Calidad-endoscop-a-2019/listaap.csv", row.names = FALSE)
+
+
+library(writexl)
+
+write_xlsx(nombres, "C:/Users/Ale/Desktop/Calidad-endoscop-a-2019/listaap.xlsx")
 ```
 
