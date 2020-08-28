@@ -103,7 +103,7 @@ unique(total_sedes_operador$Operador)
 
 ## Itero con unique hasta limpiar todas las terapéuticas
 
-unique(total_sedes_terapeutica$Terapeutica)
+unique(total_sedes_operador$Terapeutica)
 
 
 total_sedes_terapeutica <- total_sedes_operador %>%
@@ -117,7 +117,7 @@ total_sedes_terapeutica <- total_sedes_operador %>%
                                        str_detect(Terapeutica, regex("EXTRAÑO")) ~ "EXTRACCION DE CUERPO EXTRAÑO",
                                        str_detect(Terapeutica, regex("HEMOSTASIA|SANGRAN|CLIP|BIPOLAR")) ~ "HEMOSTASIA DE LESION SANGRANTE",
                                        str_detect(Terapeutica, regex("LIGADURA|BAND")) ~ "LIGADURA DE VÁRICES ESOFAGICAS",
-                                       str_detect(Terapeutica, regex("SONDA|SNG|(K)108")) ~ "COLOCACION DE SONDA NASOGASTRICA",
+                                       str_detect(Terapeutica, regex("SONDA|SNG|K108|108")) ~ "COLOCACION DE SONDA NASOGASTRICA",
                                        str_detect(Terapeutica, regex("ANASTOM|QX")) ~ "DILATACION DE ANASTOMOSIS",
                                        str_detect(Terapeutica, regex("CAPSULA|ENDOC(A|Á)PSULA")) ~ "COLOCACION DE ENDOCAPSULA",
                                        str_detect(Terapeutica, regex("EXCLEROSIS|ESCL(A|E)ROSIS")) ~ "ESCLEROSIS DE ANGIODISPLASIAS",
@@ -148,13 +148,106 @@ total_sedes_terapeutica$Terapeutica[total_sedes_terapeutica$Terapeutica == "RETI
 
 
 
-para_leer <- total_sedes_terapeutica[which(total_sedes_terapeutica$Terapeutica == "TERMOCOAGULACIÓN BIPOLAR"), ]
 
-prueba <- total_sedes_terapeutica
+```
 
-prueba <- prueba[-(para_leer), ]
+## Limpio las indicaciones
 
-para_leer
+```{r}
+## Itero con unique hasta limpiar todas las terapéuticas
+
+
+total_sedes_indicaciones <- total_sedes_terapeutica %>%
+        mutate(Indicacion = case_when(str_detect(Indicacion, regex("REFLUJO|PIROSIS|ERGE|ACIDO|RGE|ESOFAGITIS|REGURGITACION|SAS|LARINGITIS|HERNIA HIATAL|LESION ELEVADA CARDIAL|CX ESOFAGO|SARCOIDOSIS|CX DE ESOFAGO|CTROL. ULCERA ESOFAGICA")) ~ "PIROSIS-REFLUJO",
+                                      str_detect(Indicacion, regex("CROHN|EII|EEI|ULCEROSA|COITIS|ENFERMEDAD INFLAMATORIA")) ~ "ENFERMEDAD INFLAMATORIA INTESTINAL",
+                                      str_detect(Indicacion, regex("BARRET|BARRETT|METAPLASIA INTESTINAL (DE|ESO)|CONTROL DE ESP|ESOFAGOMOO")) ~ "VIGILANCIA ESOFAGO DE BARRETT",
+                                      str_detect(Indicacion, regex("BARI(A|Á)TRICA|EVALUACION ANASTOMOSIS GASTRO-ENTER|MANGA|REDUCCION ANASTOMOSIS-|DILATACION DE ESTENOSIS|BALON GASTRICO")) ~ "CIRUGIA BARIATRICA",
+                                      str_detect(Indicacion, regex("PESO|IMPREGNACION")) ~ "SINDROME DE IMPREGNACION",
+                                      str_detect(Indicacion, regex("SOMF")) ~ "SOMF +",
+                                      str_detect(Indicacion, regex("RITMO")) ~ "ALTERACION DEL RITMO EVACUATORIO",
+                                      str_detect(Indicacion, regex("DIARREA")) ~ "DIARREA CRONICA",
+                                      str_detect(Indicacion, regex("ANEMIA|CAIDA DE HTO")) ~ "ANEMIA",
+                                      str_detect(Indicacion, regex("DISTENSION (ABDOMINAL|DE ABDOMEN)|DISPEPSIA|GLOBUS|ERUCTOS|INTOLERANCIA DIGESTIVA|NAUSEAS|4")) ~ "DISPEPSIA",
+                                      str_detect(Indicacion, regex("PROCTORRAGIA|PROCOTRRAGIA")) ~ "PROCTORRAGIA",
+                                      str_detect(Indicacion, regex("SCREENING|TRASP(L|R)ANTE|IRC|RENAL|CONTROL PRE TRANSPLANTE|PAF|LYNCH|S DE COLON|ANT FLIA C COLON|^Q$|MELANOMA|PRETRANSPLANTE")) &! TipEs == "G" ~ "SCREENING CANCER COLORRECTAL",
+                                      str_detect(Indicacion, regex("SCREENING|TRASP(L|R)ANTE|IRC|RENAL|CONTROL PRE TRANSPLANTE|PAF|LYNCH|ANT FLIA C COLON|MELANOMA|PRETRANSPLANTE")) & TipEs == "G" ~ "SCREENING CANCER GASTRICO",
+                                      str_detect(Indicacion, regex("ANTEC FAMILIARES CA ESOFAGO")) ~ "SCREENING CANCER ESOFAGO",
+                                      str_detect(Indicacion, regex("PRIMARIO|HEPATICA")) ~ "BUSQUEDA DE PRIMARIO DESCONOCIDO",
+                                      str_detect(Indicacion, regex("P(O|Ó)LIP|MUCOSECTOMIA|LESION (PLANA|COLONICA)|CA RECTO|RESECCIÓN DE LESIONES COLÓNICAS")) &! Indicacion == regex("GASTRICOS|VIG(ILANCIA)|C(ON)TROL|MULTIPLE|SAGRADO") ~ "RESECCION DE LESIONES",
+                                      str_detect(Indicacion, regex("ACALASIA|BOTOX")) ~ "ACALASIA",
+                                      str_detect(Indicacion, regex("PYLORI|HELICOBACTER|ANTECEDENTES DE (GASTRITIS|GASRITIS) CR(O|Ó)NICA|GASTRITIS")) ~ "BUSQUEDA DE H.PYLORI",
+                                      str_detect(Indicacion, regex("DOLOR (ABDOMINAL|DE ABDOMEN)|IRRITABLE|FII|SII|DOLOR ABD")) ~ "DOLOR ABDOMINAL",
+                                      str_detect(Indicacion, regex("EPIGASTRALGIA|CARDIO|PRECORDIAL|EPIGATRALGIA|AINES")) ~ "EPIGASTRALGIA-DOLOR RETROESTERNAL",
+                                      str_detect(Indicacion, regex("AFAGIA|DISFAGIA|ODINOFAGIA|DECARTAR EOSINOFILIA")) ~ "DISFAGIA",
+                                      str_detect(Indicacion, regex("V(A|Á)RICES|CIRROSIS|BANDING|CONTROL DE VE|HIPERTENSION PORTAL|HEPATOPATIA")) ~ "DIAGNOSTICO-TRATAMIENTO DE VARICES ESOFÁGICAS",
+                                      str_detect(Indicacion, regex("MELENA")) ~ "MELENA",
+                                      str_detect(Indicacion, regex("METAPLASIA INTESTINAL (GASTRICA|EN ESTOMAGO)|METAPLASIA INTESTINAL EN ESTOMAG|PESQUISA DE DISP|CONTROL DE GASTROPATIA")) ~ "VIGILANCIA METAPLASIA GASTRICA",
+                                      str_detect(Indicacion, regex("ENGROSAMIENTO DE (COLON SIGMOIDES POR ECO|LA PARED RECTAL)|TAC PATOLOGICA|IMAGENES|ILEITIS|ABSCESO EN MESORECTO|CONTROL DE MUCOCELE|ISQUEMIA COLONICA")) ~ "ANORMALIDADES EN ESTUDIOS POR IMAGENES",
+                                      str_detect(Indicacion, regex("ULCERA (PEPTICA|GASTRICA|DUODENAL)|CONTROL ULCERA|PEPTICA")) & TipEs == "G" ~ "CONTROL ULCERA PEPTICA",
+                                      str_detect(Indicacion, regex("CELIACA|ATROFIA MUCOSA DUODENAL?")) ~ "SOSPECHA O CONTROL ENFERMEDAD CELIACA - MALABSORCION",
+                                      str_detect(Indicacion, regex("GASTROSTOMIA")) ~ "COLOCACION-RECAMBIO DE GASTROSTOMIA",
+                                      str_detect(Indicacion, regex("SNG|K108|ALIMENTACION ENTERAL|COLOCACION DE SNE")) ~ "COLOCACION DE SONDA NASOGASTRICA",
+                                      str_detect(Indicacion, regex("EICH|INJ(.)VS(.)HUESPED")) ~ "SOSPECHA DE EICH",
+                                      str_detect(Indicacion, regex("ATASCAMIENTO|CUERPO EXTRAÑO")) ~ "CUERPO EXTRAÑO EN ESOFAGO",
+                                      str_detect(Indicacion, regex("(.)STENT ESOFAGICO|ESTENOSIS DE ESOFAGO|DILATACION- ESTENOSIS|DILATACION CRICOFARINGEO|CRICO|PRE CX DE ESOFAGO|STENT ESOFAGO|ESTENOSIS POST QUIRURGICA|STENT ESOFAGICO")) ~ "ESTENOSIS ESOFAGICA",
+                                      str_detect(Indicacion, regex("TOS|DISFONIA")) ~ "SINTOMAS ATIPICOS DE REFLUJO",
+                                      str_detect(Indicacion, regex("CARCINOIDE|NEUROENDO|TNE")) ~ "VIGILANCIA TUMOR NEUROENDOCRINO",
+                                      str_detect(Indicacion, regex("HDA|HDB|HVDA|HEMORRAGIA")) ~ "HEMORRAGIA DIGESTIVA NO ESPECIFICADA",
+                                      str_detect(Indicacion, regex("BARIATRICA|BARIATICA|MANGA|CX BARI|CX GASTRICA|PRE CX$")) & TipEs == "G" ~ "CIRUGIA BARIATRICA",
+                                      str_detect(Indicacion, regex("BALON")) ~ "EVALUACION PARA BALON GASTRICO",
+                                      str_detect(Indicacion, regex("PANCREAS|COLEDOCIANO|DPC")) ~ "TUMOR DE PANCREAS Y/O VIA BILIAR",
+                                      str_detect(Indicacion, regex("LINFOMA(.)")) ~ "LINFOMA DEL TRACTO GASTROINTESTINAL",
+                                      str_detect(Indicacion, regex("GASTRITIS ATR(Ó|O)FICA|B12|GASTRITIS AUTOINMUNE|GASTITIS ATROFICA")) ~ "GASTRITIS ATROFICA AUTOINMUNE",
+                                      str_detect(Indicacion, regex("RECONSTRUCCI(O|Ó)N|PRE CX COLON")) ~ "RECONSTRUCCION DEL TRANSITO COLONICO",
+                                      str_detect(Indicacion, regex("MARCADORES|CA 19.9")) ~ "ELEVACION DE MARCADORES TUMORALES",
+                                      str_detect(Indicacion, regex("ENDOMETRIO|BLASTOMA|OVARIO|GINECOLOGICA")) ~ "TUMOR GINECOLOGICO",
+                                      str_detect(Indicacion, regex("CAR--RECTO|CONTROL DE CA GASTRICO|VIGILANCIA POST QUIRURGICA|CA DE (RECTO|COLON)|CONTROL DE CA DE ESOFAGO|CA COLON|CONTROL POSTQUIRUGICO|CANCER COLON|CANCER DE RECTO|ADENOCA DE LA UNION GE|CTROL POST CX|KAPOSI|ANT DE CX DE ESOFAGO|CA APENDICULAR|VIG LESION OCUPANTE")) ~ "VIGILANCIA ONCOLOGICA",
+                                      str_detect(Indicacion, regex("DIVERTICULOSIS|DIVERTICULAR")) ~ "DIVERTICULOSIS",
+                                      str_detect(Indicacion, regex("ESTENOSIS ANAST|FISTULA ENTEROCUTANEA")) ~ "ESTENOSIS POST QUIRURGICA",
+                                      str_detect(Indicacion, regex("ADENOMA SERRATO|NEURINOMA|VIGILANCIA$")) ~ "VIGILANCIA POST POLIPECTOMIA",
+                                      str_detect(Indicacion, regex("ULCERA (COLONICA|DE CIEGO)")) ~ "CONTROL ULCERA COLONICA",
+                                      str_detect(Indicacion, regex("GIST|LEIOMIOMA|IMAGEN DE LIPOMA EN 2° DUAODENAL")) ~ "VIGILANCIA LESIONES SUBEPITELIALES",
+                                      str_detect(Indicacion, regex("ESTENOSIS COLONICA?|CONSTIPACION|CONTIPACION")) ~ "CONSTIPACION",
+                                      str_detect(Indicacion, regex("FISTULA PERIANAL|ANAL")) ~ "FISTULA PERIANAL",
+                                      str_detect(Indicacion, regex("ALTRAC LABORATORIO|PCR")) ~ "ALTERACIONES DE LABORATORIO NO ESPECIFICADAS",
+                                      str_detect(Indicacion, regex("LESION (DE|EN) RECTO|TINTA CHINA")) ~ "MARCACIÓN CON TINTA CHINA",
+                                      str_detect(Indicacion, regex("PRE CX$|PRE CX DE COLON|POSTQUIRURGICO SOI|CONTROL POST QUIRURGICO|VIGILANCIA POSTQUIRURGICA|POSTQUIRURGICO SOI|ESTENOSIS (RECTO-COLONICA|POST)")) & TipEs == "C" ~ "CONTROL POST CIRUGIA COLONICA",
+                                      str_detect(Indicacion, regex("POSTQUIRURGICO SOI")) & TipEs == "G" ~ "DISPEPSIA",
+                                      str_detect(Indicacion, regex("RETARDO EN EL VACIAMIENTO ESOFAGICO|ESCLERODERMIA|DISQ")) ~ "TRASTORNO MOTOR ESOFAGICO",
+                                      str_detect(Indicacion, regex("PROCTITIS|RECTITIS")) ~ "PROCTITIS",
+                                      str_detect(Indicacion, regex("ANGIODISPLASIA|ECTASIA")) ~ "TRATAMIENTO DE ECTASIAS VASCULARES-ANGIODISPLASIAS",
+                                      str_detect(Indicacion, regex("CONTROL$")) & str_detect(Colonoscopia, regex("ANASTOMOSIS")) ~ "VIGILANCIA ONCOLOGICA",
+                                      str_detect(Indicacion, regex("CONTROL$")) &! is.na(Colonoscopia) ~ "SCREENING CANCER COLORRECTAL",
+                                      str_detect(Indicacion, regex("CONTROL$")) & str_detect(Duodeno, regex("BILIAR")) ~ "TUMOR DE PANCREAS Y/O VIA BILIAR",
+                                      str_detect(Indicacion, regex("CONTROL$")) & is.na(Colonoscopia) ~ "PIROSIS-REFLUJO",
+                                      TRUE ~ Indicacion))
+                                      
+                                                                                                  
+
+
+unique(total_sedes_indicaciones$Indicacion)
+
+
+
+
+
+limpieza <- str_detect(total_sedes_indicaciones$Indicacion, regex("FISTULA ENTEROCUTANEA"))
+                                                                                                                             
+total_sedes_indicaciones[limpieza,]
+        
+knitr::kable(head(total_sedes_indicaciones[limpieza,]))
+
+
+
+
+print(total_sedes_terapeutica$Indicacion == "POLIPOS GASTRICOS")
+
+polipo <- str_detect(total_sedes_terapeutica$Indicacion, regex("POLIPO GASTRICO"))
+
+total_sedes_terapeutica[polipo,]
+
+
+ 
 
 
 
@@ -209,5 +302,15 @@ write.csv(nombres, "C:/Users/Ale/Desktop/Calidad-endoscop-a-2019/listaap.csv", r
 library(writexl)
 
 write_xlsx(nombres, "C:/Users/Ale/Desktop/Calidad-endoscop-a-2019/listaap.xlsx")
+
+
+para_leer <- total_sedes_terapeutica[which(total_sedes_terapeutica$Terapeutica == "TERMOCOAGULACIÓN BIPOLAR"), ]
+
+prueba <- total_sedes_terapeutica
+
+prueba <- prueba[-(para_leer), ]
+
+para_leer
+
 ```
 
