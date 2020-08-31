@@ -61,6 +61,24 @@ head(total_sedes)
 str(total_sedes)
 ```
 
+## Paso a numeric los valores de preparación
+
+```{r}
+total_sedes$Preparacion <- as.numeric(total_sedes$Preparacion)
+
+```
+
+## Agrego geolocalización
+
+```{r}
+geo <- USIG_geocode(c("AV GRAL LAS HERAS 2900","GALVAN 4105"))
+
+total_sedes <- cbind(total_sedes, geo) %>%
+                        rename(Sede = address_normalised) %>%
+                        select(-Direccion)
+
+```
+
 
 ## Anonimizo y selecciono los operadores que me interesan
 
@@ -228,8 +246,71 @@ total_sedes_indicaciones <- total_sedes_terapeutica %>%
 unique(total_sedes_indicaciones$Indicacion)
 
 
+```
+
+## Limpio los tipos de estudios
+
+```{r}
+
+unique(total_sedes_indicaciones$TipEs)
+
+total_sedes_indicaciones <- total_sedes_indicaciones %>%
+                                mutate(TipEs = if_else(TipEs == "O", "G", TipEs))
+
+```
 
 
+
+## Convierto fosfatos en picosulfato y dicotomizo la variable de preparacion en adecuada e inadecuada teniendo en cuenta los estudios que tienen registro de boston total o por sectores. 
+
+```{r}
+picosulfato <- total_sedes_indicaciones$PreparadoCon %in% "FOSFATOS"
+
+total_sedes_indicaciones$PreparadoCon[picosulfato] <- "PICOSULFATO"
+
+
+solo_vcc <- total_sedes_indicaciones %>%
+                filter(TipEs == "C")
+
+
+adecuada <- solo_vcc %>%
+                filter(BostonTotal != is.na(BostonTotal) | Preparacion != is.na(Preparacion)) %>%
+                mutate(Preparacion_adecuada = ifelse((!is.na (Preparacion) & Preparacion >= 6 )| ((!is.na(BostonTotal) & BostonTotal >= 6) & (BostonI >1 | BostonD > 1 | BostonT > 1)), "ADECUADA", "INADECUADA"))
+
+
+
+tail(adecuada)
+             
+head(adecuada)
+
+```
+
+## Limpio asistentes
+
+```{r}
+unique(total_sedes_indicaciones$Asistente)
+
+andres <- total_sedes_indicaciones$Asistente %in% c("ANDRES BAYA", "ANDRÉS BAYÁ","ANDRÉS BAYA")
+maria <- total_sedes_indicaciones$Asistente %in% c("MARÍA RANGUGNI", "MARÍA RANGUGNI-","MARIA RANGUGNI")
+sandra <- total_sedes_indicaciones$Asistente %in% c("GAONA. SANDRA", "GAONA, SANDRA", "GAONA SANDRA")
+
+total_sedes_indicaciones$Asistente[andres] <- "ANDRES BAYA"
+total_sedes_indicaciones$Asistente[maria] <- "MARIA RANGUGNI"
+total_sedes_indicaciones$Asistente[sandra] <- "GAONA SANDRA"
+```
+
+
+
+
+
+
+
+## Cosas que voy haciendo que resultan utiles
+
+```{r}
+
+
+## Visualizar una/s filas que me interesa ver
 
 limpieza <- str_detect(total_sedes_indicaciones$Indicacion, regex("FISTULA ENTEROCUTANEA"))
                                                                                                                              
@@ -237,45 +318,6 @@ total_sedes_indicaciones[limpieza,]
         
 knitr::kable(head(total_sedes_indicaciones[limpieza,]))
 
-
-
-
-print(total_sedes_terapeutica$Indicacion == "POLIPOS GASTRICOS")
-
-polipo <- str_detect(total_sedes_terapeutica$Indicacion, regex("POLIPO GASTRICO"))
-
-total_sedes_terapeutica[polipo,]
-
-
- 
-
-
-
-```
-
-
-
-
-
-
-
-
-
-## Agrego geolocalización
-
-```{r}
-geo <- USIG_geocode(c("AV GRAL LAS HERAS 2900","GALVAN 4105"))
-
-total <- cbind(estudios_total, geo) %>%
-                        rename(Sede = address_normalised) %>%
-                        select(-Direccion)
-
-head(total)
-```
-
-## Cosas que voy haciendo que resultan utiles
-
-```{r}
 
 ## seleccionar una fila según una observacion
 
