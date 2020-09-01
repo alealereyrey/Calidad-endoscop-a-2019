@@ -122,7 +122,7 @@ unique(total_sedes_operador$Operador)
 ## Itero con unique hasta limpiar todas las terapéuticas
 
 unique(total_sedes_operador$Terapeutica)
-
+unique(total_sedes_terapeutica$Terapeutica)
 
 total_sedes_terapeutica <- total_sedes_operador %>%
         mutate(Terapeutica = case_when(str_detect(Terapeutica, regex("POL(I|P)")) ~ "POLIPECTOMIA",
@@ -241,7 +241,7 @@ total_sedes_indicaciones <- total_sedes_terapeutica %>%
                                       TRUE ~ Indicacion))
                                       
                                                                                                   
-
+unique(total_sedes_terapeutica$Indicacion)
 
 unique(total_sedes_indicaciones$Indicacion)
 
@@ -298,6 +298,92 @@ total_sedes_indicaciones$Asistente[andres] <- "ANDRES BAYA"
 total_sedes_indicaciones$Asistente[maria] <- "MARIA RANGUGNI"
 total_sedes_indicaciones$Asistente[sandra] <- "GAONA SANDRA"
 ```
+
+## Para no confundir, creo un df final "total_tidy"
+
+```{r}
+total_tidy <- total_sedes_indicaciones
+```
+
+## Grafico el volumen de estudios por sede
+
+Genero primero una tabla con la cantidad y tipo de estudio por sede.
+
+```{r}
+estudios_x_sede <- total_tidy %>%
+        count(TipEs, Sede)
+
+head(estudios_x_sede)
+
+grafico_estudios_sede <- ggplot(estudios_x_sede,
+                                 aes(x = Sede, y = n, label = n)) +
+                                         geom_col(aes(fill = TipEs), position = "dodge") +
+                                                scale_fill_brewer(palette="Pastel1") +
+                                        labs(title = "Estudios por Sede",
+                                     x = "Sede",
+                                     y = "Cantidad de estudios",
+                                     color = "Tipo de estudio") +
+                                      geom_text(position = position_dodge2(width = 1), aes(group = Sede),vjust = -0.2)
+        
+                                
+
+grafico_estudios_sede
+```
+
+
+
+## Mapeo el volumen de estudios por sede
+
+Indico el bounding box y descargo el mapa de CABA
+
+```{r, echo=TRUE, results= "hide"}
+
+bbox <- getbb("Ciudad Autónoma de Buenos Aires,Argentina")
+
+CABA <- get_stamenmap(bbox = bbox,
+                      maptype = "terrain",zoom=12)
+```
+
+
+Mapeo el número de endoscopias según Sede:
+
+```{r, echo=TRUE}
+mapa_estudios_sede <- ggmap(CABA) +
+    stat_density2d(data=total_tidy, aes(x=lon, y=lat, fill=stat(level)),geom="polygon") +
+         scale_fill_viridis_c() +
+         labs(title = "Número de estudios por sede",
+       subtitle = "Galvan 4105, Av Gral Las Heras 2900. CABA",
+       fill = "Número de estudios") +
+          theme_void()
+
+mapa_estudios_sede
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
